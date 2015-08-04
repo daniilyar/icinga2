@@ -204,9 +204,9 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 	       << "\t" << "return ";
 
 	if (!klass.Parent.empty())
-		m_Impl << "Type::GetByName(\"" << klass.Parent << "\")";
+		m_Impl << klass.Parent << "::TypeInstance";
 	else
-		m_Impl << "Type::Ptr()";
+		m_Impl << "Object::TypeInstance";
 
 	m_Impl << ";" << std::endl
 	       << "}" << std::endl << std::endl;
@@ -377,6 +377,40 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 	m_Impl << "\t" << "return deps;" << std::endl
 	       << "}" << std::endl;
 
+	/* RegisterAttributeHandler */
+	m_Header << "public:" << std::endl
+		 << "\t" << "virtual void RegisterAttributeHandler(int fieldId, const Type::AttributeHandler& callback);" << std::endl;
+
+	m_Impl << "void TypeImpl<" << klass.Name << ">::RegisterAttributeHandler(int fieldId, const Type::AttributeHandler& callback)" << std::endl
+	       << "{" << std::endl;
+
+	if (!klass.Parent.empty())
+		m_Impl << "\t" << "int real_id = fieldId - " << klass.Parent << "::TypeInstance->GetFieldCount(); " << std::endl
+		       << "\t" << "if (real_id < 0) { " << klass.Parent << "::TypeInstance->RegisterAttributeHandler(fieldId, callback); return; }" << std::endl;
+
+	m_Impl << "\t" << "switch (";
+
+	if (!klass.Parent.empty())
+		m_Impl << "real_id";
+	else
+		m_Impl << "fieldId";
+
+	m_Impl << ") {" << std::endl;
+
+	int num = 0;
+	for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
+		m_Impl << "\t\t" << "case " << num << ":" << std::endl
+		       << "\t\t\t" << "ObjectImpl<" << klass.Name << ">::On" << it->GetFriendlyName() << "Changed.connect(callback);" << std::endl
+		       << "\t\t\t" << "break;" << std::endl;
+		num++;
+	}
+
+	m_Impl << "\t\t" << "default:" << std::endl
+	       << "\t\t\t" << "throw std::runtime_error(\"Invalid field ID.\");" << std::endl
+	       << "\t" << "}" << std::endl;
+
+	m_Impl << "}" << std::endl << std::endl;
+		
 	m_Header << "};" << std::endl << std::endl;
 
 	m_Header << std::endl;
@@ -443,7 +477,7 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 		       << "{" << std::endl;
 
 		for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
-			m_Impl << "\t\t" << "Set" << it->GetFriendlyName() << "(" << "GetDefault" << it->GetFriendlyName() << "());" << std::endl;
+			m_Impl << "\t" << "Set" << it->GetFriendlyName() << "(" << "GetDefault" << it->GetFriendlyName() << "(), true);" << std::endl;
 		}
 
 		m_Impl << "}" << std::endl << std::endl;
@@ -457,14 +491,14 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 
 		/* SetField */
 		m_Header << "protected:" << std::endl
-			 << "\t" << "virtual void SetField(int id, const Value& value);" << std::endl;
+			 << "\t" << "virtual void SetField(int id, const Value& value, bool suppress_events = false, const Value& cookie = Empty);" << std::endl;
 
-		m_Impl << "void ObjectImpl<" << klass.Name << ">::SetField(int id, const Value& value)" << std::endl
+		m_Impl << "void ObjectImpl<" << klass.Name << ">::SetField(int id, const Value& value, bool suppress_events, const Value& cookie)" << std::endl
 		       << "{" << std::endl;
 
 		if (!klass.Parent.empty())
 			m_Impl << "\t" << "int real_id = id - " << klass.Parent << "::TypeInstance->GetFieldCount(); " << std::endl
-			       << "\t" << "if (real_id < 0) { " << klass.Parent << "::SetField(id, value); return; }" << std::endl;
+			       << "\t" << "if (real_id < 0) { " << klass.Parent << "::SetField(id, value, suppress_events, cookie); return; }" << std::endl;
 
 		m_Impl << "\t" << "switch (";
 
@@ -488,7 +522,7 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 			if (it->Attributes & FAEnum)
 				m_Impl << "))";
 			
-			m_Impl << ");" << std::endl
+			m_Impl << ", suppress_events, cookie);" << std::endl
 			       << "\t\t\t" << "break;" << std::endl;
 			num++;
 		}
@@ -523,6 +557,40 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 		for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
 			m_Impl << "\t\t" << "case " << num << ":" << std::endl
 			       << "\t\t\t" << "return Get" << it->GetFriendlyName() << "();" << std::endl;
+			num++;
+		}
+
+		m_Impl << "\t\t" << "default:" << std::endl
+		       << "\t\t\t" << "throw std::runtime_error(\"Invalid field ID.\");" << std::endl
+		       << "\t" << "}" << std::endl;
+
+		m_Impl << "}" << std::endl << std::endl;
+		
+		/* NotifyField */
+		m_Header << "protected:" << std::endl
+			 << "\t" << "virtual void NotifyField(int id, const Value& cookie = Empty);" << std::endl;
+
+		m_Impl << "void ObjectImpl<" << klass.Name << ">::NotifyField(int id, const Value& cookie)" << std::endl
+		       << "{" << std::endl;
+
+		if (!klass.Parent.empty())
+			m_Impl << "\t" << "int real_id = id - " << klass.Parent << "::TypeInstance->GetFieldCount(); " << std::endl
+			       << "\t" << "if (real_id < 0) { " << klass.Parent << "::NotifyField(id, cookie); return; }" << std::endl;
+
+		m_Impl << "\t" << "switch (";
+
+		if (!klass.Parent.empty())
+			m_Impl << "real_id";
+		else
+			m_Impl << "id";
+
+		m_Impl << ") {" << std::endl;
+
+		num = 0;
+		for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
+			m_Impl << "\t\t" << "case " << num << ":" << std::endl
+			       << "\t\t\t" << "Notify" << it->GetFriendlyName() << "(cookie);" << std::endl
+			       << "\t\t\t" << "break;" << std::endl;
 			num++;
 		}
 
@@ -567,31 +635,49 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 
 			if (it->Attributes & FASetProtected)
 				prot = "protected";
-			else if (it->Attributes & FAConfig)
-				prot = "private";
 			else
 				prot = "public";
 
 			m_Header << prot << ":" << std::endl
-				 << "\t" << "virtual void Set" << it->GetFriendlyName() << "(" << it->Type.GetArgumentType() << " value)";
+				 << "\t" << "virtual void Set" << it->GetFriendlyName() << "(" << it->Type.GetArgumentType() << " value, bool suppress_events = false, const Value& cookie = Empty)";
 
 			if (it->PureSetAccessor) {
 				m_Header << " = 0;" << std::endl;
 			} else {
 				m_Header << ";" << std::endl;
 
-				m_Impl << "void ObjectImpl<" << klass.Name << ">::Set" << it->GetFriendlyName() << "(" << it->Type.GetArgumentType() << " value)" << std::endl
+				m_Impl << "void ObjectImpl<" << klass.Name << ">::Set" << it->GetFriendlyName() << "(" << it->Type.GetArgumentType() << " value, bool suppress_events, const Value& cookie)" << std::endl
 				       << "{" << std::endl;
 
 				if (it->SetAccessor.empty() && !(it->Attributes & FANoStorage))
-					m_Impl << "\t\t" << "m_" << it->GetFriendlyName() << " = value;" << std::endl;
+					m_Impl << "\t" << "m_" << it->GetFriendlyName() << " = value;" << std::endl;
 				else
-					m_Impl << it->SetAccessor << std::endl;
-
-				m_Impl << "}" << std::endl << std::endl;
+					m_Impl << it->SetAccessor << std::endl << std::endl;
+					
+				m_Impl << "\t" << "if (!suppress_events)" << std::endl
+				       << "\t\t" << "Notify" << it->GetFriendlyName() << "(cookie);" << std::endl
+				       << "}" << std::endl << std::endl;
 			}
 		}
 
+		/* notify */
+		for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
+			std::string prot;
+
+			if (it->Attributes & FASetProtected)
+				prot = "protected";
+			else
+				prot = "public";
+
+			m_Header << prot << ":" << std::endl
+				 << "\t" << "virtual void Notify" << it->GetFriendlyName() << "(const Value& cookie = Empty);" << std::endl;
+
+			m_Impl << "void ObjectImpl<" << klass.Name << ">::Notify" << it->GetFriendlyName() << "(const Value& cookie)" << std::endl
+			       << "{" << std::endl
+			       << "\t" << "On" << it->GetFriendlyName() << "Changed(static_cast<" << klass.Name << " *>(this), cookie);" << std::endl
+			       << "}" << std::endl << std::endl;
+		}
+		
 		/* default */
 		for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
 			std::string realType = it->Type.GetRealType();
@@ -622,6 +708,14 @@ void ClassCompiler::HandleClass(const Klass& klass, const ClassDebugInfo&)
 		for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
 			if (!(it->Attributes & FANoStorage))
 				m_Header << "\t" << it->Type.GetRealType() << " m_" << it->GetFriendlyName() << ";" << std::endl;
+		}
+		
+		/* signal */
+		m_Header << "public:" << std::endl;
+		
+		for (it = klass.Fields.begin(); it != klass.Fields.end(); it++) {
+			m_Header << "\t" << "static boost::signals2::signal<void (const intrusive_ptr<" << klass.Name << ">&, const Value&)> On" << it->GetFriendlyName() << "Changed;" << std::endl;
+			m_Impl << std::endl << "boost::signals2::signal<void (const intrusive_ptr<" << klass.Name << ">&, const Value&)> ObjectImpl<" << klass.Name << ">::On" << it->GetFriendlyName() << "Changed;" << std::endl << std::endl;
 		}
 	}
 
@@ -996,7 +1090,8 @@ void ClassCompiler::CompileStream(const std::string& path, std::istream& input,
 		<< "#include \"base/type.hpp\"" << std::endl
 		<< "#include \"base/value.hpp\"" << std::endl
 		<< "#include \"base/array.hpp\"" << std::endl
-		<< "#include \"base/dictionary.hpp\"" << std::endl << std::endl;
+		<< "#include \"base/dictionary.hpp\"" << std::endl
+		<< "#include <boost/signals2.hpp>" << std::endl << std::endl;
 
 	oimpl << "#include \"base/exception.hpp\"" << std::endl
 	      << "#include \"base/objectlock.hpp\"" << std::endl

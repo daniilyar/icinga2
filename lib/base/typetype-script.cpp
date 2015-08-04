@@ -17,7 +17,7 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
 
-#include "base/object.hpp"
+#include "base/type.hpp"
 #include "base/dictionary.hpp"
 #include "base/function.hpp"
 #include "base/functionwrapper.hpp"
@@ -25,28 +25,30 @@
 
 using namespace icinga;
 
-static String ObjectToString(void)
+static void InvokeAttributeHandlerHelper(const Function::Ptr& callback,
+    const Object::Ptr& object, const Value& cookie)
 {
-	ScriptFrame *vframe = ScriptFrame::GetCurrentFrame();
-	Object::Ptr self = static_cast<Object::Ptr>(vframe->Self);
-	return self->ToString();
+	std::vector<Value> arguments;
+	arguments.push_back(object);
+	callback->Invoke(arguments);
 }
 
-static void ObjectNotifyAttribute(const String& attribute)
+static void TypeRegisterAttributeHandler(const String& fieldName, const Function::Ptr& callback)
 {
 	ScriptFrame *vframe = ScriptFrame::GetCurrentFrame();
-	Object::Ptr self = static_cast<Object::Ptr>(vframe->Self);
-	self->NotifyField(self->GetReflectionType()->GetFieldId(attribute));
+	Type::Ptr self = static_cast<Type::Ptr>(vframe->Self);
+	
+	int fid = self->GetFieldId(fieldName);
+	self->RegisterAttributeHandler(fid, boost::bind(&InvokeAttributeHandlerHelper, callback, _1, _2));
 }
 
-Object::Ptr Object::GetPrototype(void)
+Object::Ptr TypeType::GetPrototype(void)
 {
 	static Dictionary::Ptr prototype;
 
 	if (!prototype) {
 		prototype = new Dictionary();
-		prototype->Set("to_string", new Function(WrapFunction(ObjectToString), true));
-		prototype->Set("notify_attribute", new Function(WrapFunction(ObjectNotifyAttribute), false));
+		prototype->Set("register_attribute_handler", new Function(WrapFunction(TypeRegisterAttributeHandler), false));
 	}
 
 	return prototype;

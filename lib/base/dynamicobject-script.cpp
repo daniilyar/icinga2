@@ -17,7 +17,7 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.             *
  ******************************************************************************/
 
-#include "base/object.hpp"
+#include "base/dynamicobject.hpp"
 #include "base/dictionary.hpp"
 #include "base/function.hpp"
 #include "base/functionwrapper.hpp"
@@ -25,28 +25,28 @@
 
 using namespace icinga;
 
-static String ObjectToString(void)
+static void DynamicObjectModifyAttribute(const String& attr, const Value& value)
 {
 	ScriptFrame *vframe = ScriptFrame::GetCurrentFrame();
-	Object::Ptr self = static_cast<Object::Ptr>(vframe->Self);
-	return self->ToString();
+	DynamicObject::Ptr self = vframe->Self;
+	return self->ModifyAttribute(attr, value);
 }
 
-static void ObjectNotifyAttribute(const String& attribute)
+static void DynamicObjectRestoreAttribute(const String& attr)
 {
 	ScriptFrame *vframe = ScriptFrame::GetCurrentFrame();
-	Object::Ptr self = static_cast<Object::Ptr>(vframe->Self);
-	self->NotifyField(self->GetReflectionType()->GetFieldId(attribute));
+	DynamicObject::Ptr self = vframe->Self;
+	return self->RestoreAttribute(attr);
 }
 
-Object::Ptr Object::GetPrototype(void)
+Object::Ptr DynamicObject::GetPrototype(void)
 {
 	static Dictionary::Ptr prototype;
 
 	if (!prototype) {
 		prototype = new Dictionary();
-		prototype->Set("to_string", new Function(WrapFunction(ObjectToString), true));
-		prototype->Set("notify_attribute", new Function(WrapFunction(ObjectNotifyAttribute), false));
+		prototype->Set("modify_attribute", new Function(WrapFunction(DynamicObjectModifyAttribute), false));
+		prototype->Set("restore_attribute", new Function(WrapFunction(DynamicObjectRestoreAttribute), false));
 	}
 
 	return prototype;

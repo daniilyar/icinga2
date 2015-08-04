@@ -495,7 +495,7 @@ void ApiListener::ApiTimerHandler(void)
 	    << "Connected endpoints: " << Utility::NaturalJoin(names);
 }
 
-void ApiListener::RelayMessage(const MessageOrigin& origin, const DynamicObject::Ptr& secobj, const Dictionary::Ptr& message, bool log)
+void ApiListener::RelayMessage(const MessageOrigin::Ptr& origin, const DynamicObject::Ptr& secobj, const Dictionary::Ptr& message, bool log)
 {
 	m_RelayQueue.Enqueue(boost::bind(&ApiListener::SyncRelayMessage, this, origin, secobj, message, log));
 }
@@ -544,7 +544,7 @@ void ApiListener::SyncSendMessage(const Endpoint::Ptr& endpoint, const Dictionar
 }
 
 
-void ApiListener::SyncRelayMessage(const MessageOrigin& origin, const DynamicObject::Ptr& secobj, const Dictionary::Ptr& message, bool log)
+void ApiListener::SyncRelayMessage(const MessageOrigin::Ptr& origin, const DynamicObject::Ptr& secobj, const Dictionary::Ptr& message, bool log)
 {
 	double ts = Utility::GetTime();
 	message->Set("ts", ts);
@@ -555,8 +555,8 @@ void ApiListener::SyncRelayMessage(const MessageOrigin& origin, const DynamicObj
 	if (log)
 		PersistMessage(message, secobj);
 
-	if (origin.FromZone)
-		message->Set("originZone", origin.FromZone->GetName());
+	if (origin->FromZone)
+		message->Set("originZone", origin->FromZone->GetName());
 
 	bool is_master = IsMaster();
 	Endpoint::Ptr master = GetMaster();
@@ -579,13 +579,13 @@ void ApiListener::SyncRelayMessage(const MessageOrigin& origin, const DynamicObj
 		}
 
 		/* don't relay messages back to the endpoint which we got the message from */
-		if (origin.FromClient && endpoint == origin.FromClient->GetEndpoint()) {
+		if (origin->FromClient && endpoint == origin->FromClient->GetEndpoint()) {
 			skippedEndpoints.push_back(endpoint);
 			continue;
 		}
 
 		/* don't relay messages back to the zone which we got the message from */
-		if (origin.FromZone && target_zone == origin.FromZone) {
+		if (origin->FromZone && target_zone == origin->FromZone) {
 			skippedEndpoints.push_back(endpoint);
 			continue;
 		}

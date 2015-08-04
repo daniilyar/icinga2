@@ -48,7 +48,8 @@ void DbObject::StaticInitialize(void)
 {
 	/* triggered in ProcessCheckResult(), requires UpdateNextCheck() to be called before */
 	DynamicObject::OnStateChanged.connect(boost::bind(&DbObject::StateChangedHandler, _1));
-	CustomVarObject::OnVarsChanged.connect(boost::bind(&DbObject::VarsChangedHandler, _1));
+	//TODO-MA
+	//CustomVarObject::OnVarsChanged.connect(boost::bind(&DbObject::VarsChangedHandler, _1));
 }
 
 void DbObject::SetObject(const DynamicObject::Ptr& object)

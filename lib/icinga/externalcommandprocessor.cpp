@@ -2109,7 +2109,7 @@ void ExternalCommandProcessor::ChangeHostEventHandler(double, const std::vector<
 		{
 			ObjectLock olock(host);
 
-			host->SetEventCommand(command);
+			host->SetEventCommandRaw(command->GetName());
 		}
 	}
 }
@@ -2136,7 +2136,7 @@ void ExternalCommandProcessor::ChangeSvcEventHandler(double, const std::vector<S
 		{
 			ObjectLock olock(service);
 
-			service->SetEventCommand(command);
+			service->SetEventCommandRaw(command->GetName());
 		}
 	}
 }
@@ -2159,7 +2159,7 @@ void ExternalCommandProcessor::ChangeHostCheckCommand(double, const std::vector<
 	{
 		ObjectLock olock(host);
 
-		host->SetCheckCommand(command);
+		host->SetCheckCommandRaw(command->GetName());
 	}
 }
 
@@ -2181,7 +2181,7 @@ void ExternalCommandProcessor::ChangeSvcCheckCommand(double, const std::vector<S
 	{
 		ObjectLock olock(service);
 
-		service->SetCheckCommand(command);
+		service->SetCheckCommandRaw(command->GetName());
 	}
 }
 
@@ -2241,7 +2241,7 @@ void ExternalCommandProcessor::ChangeHostCheckTimeperiod(double, const std::vect
 	{
 		ObjectLock olock(host);
 
-		host->SetCheckPeriod(tp);
+		host->SetCheckPeriodRaw(tp->GetName());
 	}
 }
 
@@ -2263,7 +2263,7 @@ void ExternalCommandProcessor::ChangeSvcCheckTimeperiod(double, const std::vecto
 	{
 		ObjectLock olock(service);
 
-		service->SetCheckPeriod(tp);
+		service->SetCheckPeriodRaw(tp->GetName());
 	}
 }
 

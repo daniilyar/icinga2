@@ -63,7 +63,6 @@ void CompatLogger::Start(void)
 
 	Checkable::OnNewCheckResult.connect(bind(&CompatLogger::CheckResultHandler, this, _1, _2));
 	Checkable::OnNotificationSentToUser.connect(bind(&CompatLogger::NotificationSentHandler, this, _1, _2, _3, _4, _5, _6, _7, _8));
-	Checkable::OnFlappingChanged.connect(bind(&CompatLogger::FlappingHandler, this, _1, _2));
 	Checkable::OnDowntimeTriggered.connect(boost::bind(&CompatLogger::TriggerDowntimeHandler, this, _1, _2));
 	Checkable::OnDowntimeRemoved.connect(boost::bind(&CompatLogger::RemoveDowntimeHandler, this, _1, _2));
 	Checkable::OnEventCommandExecuted.connect(bind(&CompatLogger::EventCommandHandler, this, _1));
@@ -312,10 +311,11 @@ void CompatLogger::FlappingHandler(const Checkable::Ptr& checkable, FlappingStat
 			flapping_output = "Checkable appears to have stopped flapping (" + Convert::ToString(checkable->GetFlappingCurrent()) + "% change < " + Convert::ToString(checkable->GetFlappingThreshold()) + "% threshold)";
 			flapping_state_str = "STOPPED";
 			break;
-		case FlappingDisabled:
+		//TODO-MA
+		/* case FlappingDisabled:
 			flapping_output = "Flap detection has been disabled";
 			flapping_state_str = "DISABLED";
-			break;
+			break; */
 		default:
 			Log(LogCritical, "CompatLogger")
 			    << "Unknown flapping state: " << flapping_state;
