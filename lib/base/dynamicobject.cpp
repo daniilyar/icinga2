@@ -41,7 +41,7 @@
 
 using namespace icinga;
 
-REGISTER_TYPE(DynamicObject);
+REGISTER_TYPE_WITH_PROTOTYPE(DynamicObject, DynamicObject::GetPrototype());
 
 boost::signals2::signal<void (const DynamicObject::Ptr&)> DynamicObject::OnStarted;
 boost::signals2::signal<void (const DynamicObject::Ptr&)> DynamicObject::OnStopped;
@@ -97,6 +97,39 @@ void DynamicObject::ClearExtension(const String& key)
 		return;
 
 	extensions->Remove(key);
+}
+
+void DynamicObject::ModifyAttribute(const String& attr, const Value& value)
+{
+	Dictionary::Ptr original_attributes = GetOriginalAttributes();
+
+	if (!original_attributes) {
+		original_attributes = new Dictionary();
+		SetOriginalAttributes(original_attributes);
+	}
+
+	int field = GetReflectionType()->GetFieldId(attr);
+
+	Value attrVal = GetField(field);
+
+	if (!original_attributes->Contains(attr))
+		original_attributes->Set(attr, attrVal);
+
+	SetField(field, value);
+	//TODO: validation, vars.os
+}
+
+void DynamicObject::RestoreAttribute(const String& attr)
+{
+	Dictionary::Ptr original_attributes = GetOriginalAttributes();
+
+	if (!original_attributes || !original_attributes->Contains(attr))
+		return;
+
+	Value attrVal = original_attributes->Get(attr);
+
+	SetField(GetReflectionType()->GetFieldId(attr), attrVal);
+	original_attributes->Remove(attr);
 }
 
 void DynamicObject::Register(void)

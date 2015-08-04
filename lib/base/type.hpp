@@ -137,6 +137,20 @@ class TypeImpl
 	} } \
 	DEFINE_TYPE_INSTANCE(type)
 
+#define REGISTER_TYPE_WITH_PROTOTYPE(type, prototype) \
+	namespace { namespace UNIQUE_NAME(rt) { \
+		void RegisterType ## type(void) \
+		{ \
+			icinga::Type::Ptr t = new TypeImpl<type>(); \
+			t->SetPrototype(prototype); \
+			type::TypeInstance = t; \
+			icinga::Type::Register(t); \
+		} \
+		\
+		INITIALIZE_ONCE_WITH_PRIORITY(RegisterType ## type, 10); \
+	} } \
+	DEFINE_TYPE_INSTANCE(type)
+
 #define DEFINE_TYPE_INSTANCE(type) \
 	Type::Ptr type::TypeInstance
 

@@ -57,6 +57,9 @@ public:
 	Value GetExtension(const String& key);
 	void ClearExtension(const String& key);
 
+	void ModifyAttribute(const String& attr, const Value& value);
+	void RestoreAttribute(const String& attr);
+
 	void Register(void);
 
 	void Activate(void);
@@ -85,6 +88,8 @@ public:
 	static void DumpObjects(const String& filename, int attributeTypes = FAState);
 	static void RestoreObjects(const String& filename, int attributeTypes = FAState);
 	static void StopObjects(void);
+
+	static Object::Ptr GetPrototype(void);
 
 protected:
 	explicit DynamicObject(void);
